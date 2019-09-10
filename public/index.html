@@ -70,15 +70,22 @@
     }
     		
 	function sendOSC(_address, _args) {
-		$.post("/sendOSC",{address:_address, args:_args}, function(data){
-			if(data == "ok")
+		console.log("- Send OSC : "+_address);
+		ws2.send(
+			JSON.stringify(
 			{
-				console.log("| Success sending /sendOSC");
-			} else {
-				console.log("* Error sending /sendOSC");
-				console.log("* "+data);
+				type:"sendOSC",
+				address:_address,
+				args:_args
+			})
+			, function (err) {
+				if (err) {
+					console.log("* Error sending sendOSC to WS2");
+				} else {
+					console.log("| Success sending sendOSC to WS2");
+				}  
 			}
-		});
+		);
 	}
     
     document.addEventListener("DOMContentLoaded", function(event) {
