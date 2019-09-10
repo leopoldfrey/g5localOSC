@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="">
+    <meta name="author" content="">
+
+    <title>G5 Controller OSC Sender</title>
+
+    <!-- Bootstrap Core CSS -->
+    <link href="vendor/bootstrap/css/bootstrap.min.css" rel="stylesheet">
+
+    <!-- Theme CSS -->
+    <link href="css/grayscale.css" rel="stylesheet">
+    
+	<script src="js/ws.js"></script>
+	<script src="js/ws2.js"></script>
+
+    <script>
+
+	var v = 0;
+
+	function connectToWS2() {
+        // Connect to websocket server
+        ws2 = new WebSocket(wsServer2);
+
+        // Log messages from the server
+        ws2.onmessage = function (e) {
+            console.log("| WS2 Received message: " + e.data);
+            var reply = JSON.parse(e.data);
+            if(reply.command == "users") {
+            	//document.getElementById("curU").value = reply.users;
+            }
+        };
+
+        // Log errors
+        ws2.onerror = function (error) {
+            console.error("* WS2 WebSocket Error " + error.stack);
+        };
+
+        ws2.onopen = function (event) {
+            console.log("- Connected to ws2 server");
+        };
+    }
+    		
+	function connectToWS() {
+        // Connect to websocket server
+        ws = new WebSocket(wsServer);
+
+        // Log messages from the server
+        ws.onmessage = function (e) {
+            console.log("| WS Received message: " + e.data);
+            var reply = JSON.parse(e.data);
+            if(reply.command == "users") {
+            	//document.getElementById("curU").value = reply.users;
+            }
+        };
+
+        // Log errors
+        ws.onerror = function (error) {
+            console.error("WebSocket Error " + error.stack);
+        };
+
+        ws.onopen = function (event) {
+            console.log("- Connected to ws server");
+        };
+    }
+    		
+	function sendOSC(_address, _args) {
+		$.post("/sendOSC",{address:_address, args:_args}, function(data){
+			if(data == "ok")
+			{
+				console.log("| Success sending /sendOSC");
+			} else {
+				console.log("* Error sending /sendOSC");
+				console.log("* "+data);
+			}
+		});
+	}
+    
+    document.addEventListener("DOMContentLoaded", function(event) {
+    	
+    	// Connect to websocket server
+    	connectToWS();
+    	connectToWS2();
+
+    });
+
+	</script>
+	
+</head>
+
+	<body id="page-top" data-spy="scroll" data-target=".navbar-fixed-top">
+		<!-- Navigation -->
+    <nav class="navbar navbar-custom navbar-fixed-top" role="navigation" style="display:none">
+    </nav>
+
+    <!-- Section -->
+    <section id="section-standBy" class="container content-section text-center" style="padding:20px;">
+		<button class="btn btn-lg btn-click-look" style="width:220px; text-align:center;" onclick="sendOSC('/chart/prev', JSON.stringify([{ type: 'i', value: 1 }]))">Prev Chart</button>
+		<button class="btn btn-lg btn-click-look" style="width:220px; text-align:center;" onclick="sendOSC('/chart/next', JSON.stringify([{ type: 'i', value: 1 }]))">Send Chart</button>
+	</section>
+	
+	<!-- jQuery -->
+    <script src="vendor/jquery/jquery.js"></script>
+
+    <!-- Plugin JavaScript -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-easing/1.3/jquery.easing.min.js"></script>
+
+	</body>
+</html>

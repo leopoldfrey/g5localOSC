@@ -1,0 +1,18 @@
+{
+  "name": "G5OSC-server",
+  "version": "0.0.1",
+  "scripts": {
+    "start": "node app.js"
+  },
+  "dependencies": {
+    "body-parser": "latest",
+    "chart.js": "^2.8.0",
+    "express": "^4.17.1",
+    "fs": "latest",
+    "jsonfile": "latest",
+    "multer": "1.1.0",
+    "osc": "^2.3.1",
+    "serve-index": "latest",
+    "ws": "latest"
+  }
+}
