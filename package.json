@@ -1,18 +1,20 @@
 {
   "name": "G5OSC-server",
-  "version": "0.0.1",
+  "version": "0.0.2",
+  "type": "module",
   "scripts": {
     "start": "node app.js"
   },
   "dependencies": {
-    "body-parser": "latest",
     "chart.js": "latest",
     "express": "latest",
-    "fs": "latest",
     "jsonfile": "latest",
     "multer": "latest",
     "osc": "latest",
     "serve-index": "latest",
     "ws": "latest"
+  },
+  "engines": {
+    "node": ">=18.0.0"
   }
 }

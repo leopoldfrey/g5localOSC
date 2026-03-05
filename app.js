@@ -1,110 +1,97 @@
-var express     	= require("express");
-var http        	= require("http");
-var WebSocket   	= require("ws");
-var WebSocketServer	= WebSocket.Server;
-var bodyParser  	= require("body-parser");
-var app         	=  express();
-var server 			= http.createServer(app);
-var osc 			= require("osc");
+import express from "express";
+import http from "http";
+import { WebSocketServer } from "ws";
+import osc from "osc";
+import path from "path";
+import { fileURLToPath } from "url";
 
-/* PARAMETERS */
+/* ---------- Setup ---------- */
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+const app = express();
+const server = http.createServer(app);
 
 // use alternate localhost and the port Heroku assigns to $PORT
-const port = process.env.PORT || 4000;
+const PORT = process.env.PORT || 4000;
 
-app.get('/',function(req,res){
-      res.sendFile(__dirname + "/public/index.html");
+/* ---------- Static Files ---------- */
+app.use('/vendor', express.static(path.join(__dirname, 'public/vendor')));
+app.use('/css', express.static(path.join(__dirname, 'public/css')));
+app.use('/js', express.static(path.join(__dirname, 'public/js')));
+app.use('/img', express.static(path.join(__dirname, 'public/img')));
+
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
+app.get('/', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public/index.html'));
 });
 
-/*----------- Static Files -----------*/
-app.use('/vendor', express.static('public/vendor'));
-app.use('/css', express.static('public/css'));
-app.use('/js', express.static('public/js'));
-app.use('/img', express.static('public/img'));
-
-app.use(bodyParser.urlencoded({ extended: false }));
-app.use(bodyParser.json());
-
-server.listen(port,function() {
-    console.log("| Web Server listening port " + port);
+server.listen(PORT, () => {
+    console.log(`| Web Server listening on port ${PORT}`);
 });
 
-/*----------- OSC Sender -----------*/
+/* ---------- OSC Setup ---------- */
+let LOCAL = "127.0.0.1";
+let REMOTE = "127.0.0.1";
+let PORTIN = 48001;
+let PORTOUT = 48000;
 
-var LOCAL = "127.0.0.1";
-var REMOTE = "127.0.0.1";
-var PORTIN = 48001;
-var PORTOUT = 48000;
-
-process.argv.forEach(function (val, index, array) {
-  //console.log(index + ': ' + val);
-  switch(index)
-  {
-  	case 2:
-  		REMOTE = val;
-  		break;
-  	case 3:
-  		PORTOUT = val;
-  		break;
-  	case 4:
-  		LOCAL = val;
-  		break;
-  	case 5:
-  		PORTIN = val;
-  		break;
-  	default:
-  		break;
-  }
+process.argv.forEach((val, index) => {
+    switch(index) {
+        case 2: REMOTE = val; break;
+        case 3: PORTOUT = Number(val); break;
+        case 4: LOCAL = val; break;
+        case 5: PORTIN = Number(val); break;
+    }
 });
 
-console.log("Connecting to : "+REMOTE+":"+PORTOUT+" from "+LOCAL+":"+PORTIN);
+console.log(`Connecting to: ${REMOTE}:${PORTOUT} from ${LOCAL}:${PORTIN}`);
 
-var udpPort = new osc.UDPPort({
-	localAddress: LOCAL,
+const udpPort = new osc.UDPPort({
+    localAddress: LOCAL,
     localPort: PORTIN,
     remoteAddress: REMOTE,
     remotePort: PORTOUT,
     metadata: true
 });
 
+udpPort.on("ready", () => console.log("OSC UDP port is ready"));
+udpPort.on("error", (err) => console.error("OSC Error:", err));
 udpPort.open();
 
+/* ---------- WebSocket Server ---------- */
+const wss = new WebSocketServer({ server, clientTracking: true });
 
-/*----------- WS Server -----------*/
+wss.on('connection', (ws, req) => {
+    console.log(`| WS Connected: ${req.socket.remoteAddress}`);
 
-const wss = new WebSocketServer({
-    server: server,
-    autoAcceptConnections: true
+    ws.on('message', (message) => {
+        console.log('| WebSocket received:', message.toString());
+
+        try {
+            const input = JSON.parse(message);
+
+            if (input.type === 'sendOSC') {
+                const msg = {
+                    address: input.address,
+                    args: JSON.parse(input.args)
+                };
+                
+                console.log(`- Sending OSC message to ${udpPort.options.remoteAddress}:${udpPort.options.remotePort}`, msg);
+
+                udpPort.send(msg);
+                console.log('| OSC Sent ✅');
+            } else {
+                console.log('* Ignored message type:', input.type);
+            }
+        } catch (err) {
+            console.error('Error processing message:', err);
+        }
+    });
+
+    ws.on('close', () => console.log('| WS Disconnected'));
 });
 
 wss.closeTimeout = 180 * 1000;
-
-wss.on('connection', function connection(ws) {
-  ws.on('message', function incoming(message) {
-    console.log('| WebSocket received : %s', message);
-
-    var input = JSON.parse(message);
-    
-    switch(input.type) {
-  		case 'sendOSC':
-			var msg = {
-				address: input.address,
-				args: JSON.parse(input.args)
-			};
-
-			console.log("- Sending message", msg.address, msg.args, "to", udpPort.options.remoteAddress + ":" + udpPort.options.remotePort);
-   
-			try{
-				udpPort.send(msg);
-				console.error('| Success');
-			}
-			catch(error) {
-				console.error(error);
-			}
-			break;
-  		default:
-  			console.log('* ignored : '+msg.type);
-  			break;
-    }
-  });
-});
